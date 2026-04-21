@@ -1,32 +1,63 @@
-## Model Selection and Final Decision
+# LATAM Airlines ML & AI Engineer Challenge
 
-After reviewing and analyzing the data scientist’s exploratory notebook, several key observations were identified:
+## 1. Problem Overview
 
-- There is no significant difference in overall performance between Logistic Regression and XGBoost when evaluated using standard metrics.
+The goal of this challenge is to build a machine learning system to predict flight delays and deploy it as a production-ready API.
 
-- Handling class imbalance (through techniques such as scale_pos_weight) significantly improves recall for the minority class (delayed flights), which is critical for the business use case.
+The solution includes:
+- Data preprocessing
+- Model training
+- API development
+- Containerization
+- Deployment
+- Load testing
 
-Given that the problem is inherently imbalanced and the primary objective is to correctly identify delayed flights, recall for class 1 becomes a key metric.
+---
 
-### Final Model Choice
+## 2. Model Approach
 
-The selected model for production is an XGBoost classifier trained on the top 10 most relevant features with class imbalance handling.
+Based on the exploratory notebook, the best-performing model was:
 
-This decision is justified by:
+**XGBoost Classifier**
 
-- XGBoost with class balancing achieves higher recall for delayed flights compared to unbalanced models.
+Key decisions:
+- Used `scale_pos_weight` to handle class imbalance
+- One-hot encoding for categorical variables:
+  - OPERA
+  - TIPOVUELO
+  - MES
+- Fixed feature space to avoid training/serving mismatch
 
-- The model maintains performance even when using only the top 10 features, which simplifies deployment and reduces risk of feature drift.
+---
 
-- XGBoost provides consistent performance, scalability, and deterministic behavior, making it suitable for deployment in an API-based inference system.
+## 3. Engineering Decisions
 
-### Engineering Considerations
+### Model
+- Implemented in `DelayModel`
+- Lazy training inside `predict()` for simplicity
 
-During the transition from notebook to production:
+### API
+- Built using FastAPI
+- Endpoints:
+  - `/health`
+  - `/predict`
+- Custom validation:
+  - OPERA must be valid airline
+  - TIPOVUELO ∈ {I, N}
+  - MES ∈ [1,12]
 
-- Only features available at prediction time (OPERA, TIPOVUELO, MES) will be retained, avoiding data leakage from post-event variables such as Fecha-O.
+### Testing
+- All provided tests passed:
+  - `make model-test`
+  - `make api-test`
 
-- Feature encoding will be standardized to ensure consistency between training and inference.
+---
 
-- The model pipeline will be redesigned to be deterministic and reproducible, removing dependencies on notebook-specific transformations.
+## 4. Containerization
 
+- Base image: `python:3.10-slim`
+- Added `libgomp1` for XGBoost
+- Configured container to use dynamic port:
+
+```bash
+uvicorn challenge.api:app --host 0.0.0.0 --port $PORT

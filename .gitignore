@@ -32,3 +32,6 @@ build/
 
 # Models
 *.pkl
+
+# Test reports
+reports/
